@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Mode = "professional" | "casual";
 type ContentType = "email" | "text" | "note";
@@ -22,7 +22,12 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-export default function WritingInterface() {
+interface WritingInterfaceProps {
+  loadSessionId?: string | null;
+  onSessionLoaded?: () => void;
+}
+
+export default function WritingInterface({ loadSessionId, onSessionLoaded }: WritingInterfaceProps) {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [mode, setMode] = useState<Mode>("professional");
@@ -38,6 +43,52 @@ export default function WritingInterface() {
   const [isRefining, setIsRefining] = useState(false);
   const [previousOutput, setPreviousOutput] = useState("");
   const [showChanges, setShowChanges] = useState(false);
+
+  // Load session when loadSessionId changes
+  useEffect(() => {
+    const loadSessionData = async () => {
+      if (!loadSessionId) return;
+      
+      try {
+        const response = await fetch(`/api/sessions/${loadSessionId}`);
+        if (!response.ok) throw new Error('Failed to load session');
+        
+        const data = await response.json();
+        const session = data.session;
+        
+        setInput(session.originalInput || '');
+        setOutput(session.finalOutput || session.initialOutput || '');
+        setMode(session.mode as Mode);
+        setContentType(session.contentType as ContentType);
+        setSessionId(session.id);
+        
+        // Load refinement history into chat
+        if (data.refinements && data.refinements.length > 0) {
+          const messages: ChatMessage[] = [];
+          data.refinements.forEach((ref: any) => {
+            messages.push({
+              role: 'user',
+              content: ref.refinement_text,
+              timestamp: new Date(ref.timestamp)
+            });
+            messages.push({
+              role: 'assistant',
+              content: ref.refined_output,
+              timestamp: new Date(ref.timestamp)
+            });
+          });
+          setChatHistory(messages);
+        }
+        
+        if (onSessionLoaded) onSessionLoaded();
+      } catch (err) {
+        console.error('Error loading session:', err);
+        setError('Failed to load session');
+      }
+    };
+    
+    loadSessionData();
+  }, [loadSessionId, onSessionLoaded]);
 
   const handleProcess = async () => {
     if (!input.trim()) return;

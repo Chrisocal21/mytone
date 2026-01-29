@@ -41,6 +41,10 @@ export default function SettingsPage() {
   const [autoCopy, setAutoCopy] = useState(false);
   const [defaultMode, setDefaultMode] = useState<'professional' | 'casual'>('professional');
   const [defaultContentType, setDefaultContentType] = useState<'email' | 'text' | 'note'>('email');
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -82,6 +86,58 @@ export default function SettingsPage() {
   const handleDefaultContentTypeChange = (type: 'email' | 'text' | 'note') => {
     setDefaultContentType(type);
     localStorage.setItem('defaultContentType', type);
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch('/api/data/export?userId=user_chris');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mytone-export-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleResetPatterns = async () => {
+    if (resetConfirmText !== 'RESET') {
+      return;
+    }
+
+    setResetting(true);
+    try {
+      const response = await fetch('/api/data/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'user_chris', confirmText: resetConfirmText }),
+      });
+
+      if (response.ok) {
+        setShowResetModal(false);
+        setResetConfirmText('');
+        fetchStats(); // Refresh stats
+        alert('All learning patterns have been reset successfully.');
+      } else {
+        alert('Failed to reset patterns. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error resetting patterns:', error);
+      alert('Failed to reset patterns. Please try again.');
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (loading) {
@@ -203,47 +259,33 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
-
-            {stats?.learningProgress.totalSessions === 0 && (
-              <div className="text-center py-6 text-slate-500 dark:text-slate-400">
-                No writing sessions yet. Start writing to begin learning your style!
-              </div>
-            )}
           </div>
 
           {/* User Profile */}
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-4">
-              User Profile
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
+                User Profile
+              </h2>
+              <Link
+                href="/profile/edit"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Edit Profile
+              </Link>
+            </div>
             <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-700">
-                <span className="text-slate-600 dark:text-slate-400">Name</span>
-                <span className="font-medium text-slate-900 dark:text-slate-50">
-                  {stats?.userProfile.name}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-700">
-                <span className="text-slate-600 dark:text-slate-400">Email</span>
-                <span className="font-medium text-slate-900 dark:text-slate-50">
-                  {stats?.userProfile.email}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-slate-600 dark:text-slate-400">Communication Style</span>
-                <span className="font-medium text-slate-900 dark:text-slate-50">
-                  {stats?.userProfile.communicationStyle}
-                </span>
-              </div>
+              <ProfileItem label="Name" value={stats?.userProfile.name || 'Not set'} />
+              <ProfileItem label="Email" value={stats?.userProfile.email || 'Not set'} />
+              <ProfileItem label="Communication Style" value={stats?.userProfile.communicationStyle || 'Not set'} />
             </div>
           </div>
 
-          {/* Writing Preferences */}
+          {/* Preferences */}
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-4">
-              Writing Preferences
+              Preferences
             </h2>
-            
             <div className="space-y-6">
               {/* Default Mode */}
               <div>
@@ -253,7 +295,7 @@ export default function SettingsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleDefaultModeChange('professional')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
                       defaultMode === 'professional'
                         ? 'bg-blue-500 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -263,7 +305,7 @@ export default function SettingsPage() {
                   </button>
                   <button
                     onClick={() => handleDefaultModeChange('casual')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
                       defaultMode === 'casual'
                         ? 'bg-blue-500 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -282,7 +324,7 @@ export default function SettingsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleDefaultContentTypeChange('email')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
                       defaultContentType === 'email'
                         ? 'bg-purple-500 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -292,7 +334,7 @@ export default function SettingsPage() {
                   </button>
                   <button
                     onClick={() => handleDefaultContentTypeChange('text')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
                       defaultContentType === 'text'
                         ? 'bg-purple-500 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -302,7 +344,7 @@ export default function SettingsPage() {
                   </button>
                   <button
                     onClick={() => handleDefaultContentTypeChange('note')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
                       defaultContentType === 'note'
                         ? 'bg-purple-500 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
@@ -345,23 +387,22 @@ export default function SettingsPage() {
               Data Management
             </h2>
             <div className="space-y-3">
-              <button className="w-full px-4 py-3 text-left bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors">
+              <button
+                onClick={handleExportData}
+                disabled={exporting}
+                className="w-full px-4 py-3 text-left bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-50"
+              >
                 <div className="font-medium text-slate-900 dark:text-slate-50">
-                  View Session History
-                </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  Browse all your past writing sessions
-                </div>
-              </button>
-              <button className="w-full px-4 py-3 text-left bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors">
-                <div className="font-medium text-slate-900 dark:text-slate-50">
-                  Export Learning Data
+                  {exporting ? 'Exporting...' : 'Export Learning Data'}
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400">
                   Download your patterns and preferences
                 </div>
               </button>
-              <button className="w-full px-4 py-3 text-left bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="w-full px-4 py-3 text-left bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+              >
                 <div className="font-medium text-red-600 dark:text-red-400">
                   Reset Learning Patterns
                 </div>
@@ -373,6 +414,48 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-4">
+              Reset Learning Patterns
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              This will permanently delete all learned patterns. Your sessions will be preserved, but the AI will start learning from scratch.
+            </p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Type <span className="font-mono font-bold">RESET</span> to confirm:
+            </p>
+            <input
+              type="text"
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 mb-4"
+              placeholder="Type RESET"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowResetModal(false);
+                  setResetConfirmText('');
+                }}
+                className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetPatterns}
+                disabled={resetConfirmText !== 'RESET' || resetting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resetting ? 'Resetting...' : 'Reset Patterns'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -403,6 +486,15 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
       <div className="text-xs text-slate-600 dark:text-slate-400">
         {label}
       </div>
+    </div>
+  );
+}
+
+function ProfileItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-700 last:border-0">
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+      <span className="text-sm text-slate-900 dark:text-slate-50">{value}</span>
     </div>
   );
 }

@@ -5,11 +5,11 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "mytone-db"
-database_id = "" # Will be filled after creating the database
+database_id = "27682b11-75a4-43d3-8165-c3481da2086d"
 
 # For local development
 [env.development]
 [[env.development.d1_databases]]
 binding = "DB"
 database_name = "mytone-db-dev"
-database_id = "" # Will be filled after creating the database
+database_id = "bb33b677-c9b6-4a29-9b75-a224fb8ea3de"

@@ -1,6 +1,20 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import WritingInterface from "@/components/WritingInterface";
 
 export default function Home() {
+  const [loadSessionId, setLoadSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleLoadSession = (event: any) => {
+      setLoadSessionId(event.detail.sessionId);
+    };
+
+    window.addEventListener('loadSession', handleLoadSession);
+    return () => window.removeEventListener('loadSession', handleLoadSession);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -13,7 +27,10 @@ export default function Home() {
           </p>
         </header>
 
-        <WritingInterface />
+        <WritingInterface 
+          loadSessionId={loadSessionId}
+          onSessionLoaded={() => setLoadSessionId(null)}
+        />
       </div>
     </div>
   );

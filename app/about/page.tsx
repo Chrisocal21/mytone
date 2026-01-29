@@ -28,9 +28,10 @@ export default function AboutPage() {
               Write Like You, Only Better
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
-              Unlike generic AI writing tools, your Digital Writing Twin preserves your authentic voice 
-              while enhancing clarity, grammar, and structure. It learns silently from your edits and 
-              becomes more accurate with each interaction.
+              mytone is an AI writing assistant that learns your unique communication style. It analyzes 
+              your edits, tracks vocabulary preferences, tone adjustments, and structural patterns to 
+              enhance your writing while preserving your authentic voice. With temporal weighting and 
+              confidence scoring, it continuously adapts to your evolving style.
             </p>
             
             <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-6 border-l-4 border-blue-500">
@@ -43,62 +44,109 @@ export default function AboutPage() {
           {/* Features Grid */}
           <div className="grid md:grid-cols-2 gap-6 mb-12">
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
-              <div className="text-blue-500 text-3xl mb-3">✨</div>
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
-                Authentic Voice Preservation
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300">
-                Sounds like YOU, not generic AI. Maintains your personality, tone, and natural style.
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
               <div className="text-blue-500 text-3xl mb-3">🧠</div>
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
-                Silent Learning
+                Advanced Learning System
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                Improves automatically from your edits without requiring explicit training or feedback.
+                Extracts patterns from your edits with confidence scoring, temporal weighting, and automatic improvement over time.
               </p>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
-              <div className="text-blue-500 text-3xl mb-3">🎯</div>
+              <div className="text-blue-500 text-3xl mb-3">💬</div>
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
-                Single Purpose Focus
+                Chat-Style Refinement
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                Focused solely on writing enhancement - simpler than ChatGPT but more personal.
+                Refine outputs with natural language requests. Quick actions for tone, length, and formality adjustments.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="text-blue-500 text-3xl mb-3">📊</div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
+                Progress Analytics
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                Track learning progress, pattern confidence, and style evolution. Export data or reset patterns anytime.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="text-blue-500 text-3xl mb-3">🔒</div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
+                Privacy First
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                Password-protected access, secure data storage with Cloudflare D1, and full control over your learning data.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
+              <div className="text-blue-500 text-3xl mb-3">📝</div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
+                Session History
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300">
+                Access past writing sessions grouped by date. Load previous work to continue refining or reference.
               </p>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
               <div className="text-blue-500 text-3xl mb-3">⚡</div>
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
-                Context Awareness
+                Response Caching
               </h3>
               <p className="text-slate-600 dark:text-slate-300">
-                Adapts to professional vs. casual communication contexts automatically.
+                Smart caching returns identical requests instantly, reducing API costs and improving performance.
               </p>
             </div>
           </div>
 
           {/* Status Banner */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 text-center text-white">
-            <h3 className="text-2xl font-bold mb-3">🚧 Currently in Development</h3>
-            <p className="text-blue-50 mb-4">
-              Building the foundation for your personal writing assistant. Follow along as we develop 
-              this tool from the ground up.
-            </p>
-            <div className="inline-block bg-white/20 rounded-full px-6 py-2 text-sm font-semibold">
-              Phase 1: MVP Foundation
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-8 text-white mb-12">
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-bold mb-3">✅ Phase 2 Complete</h3>
+              <p className="text-blue-50 mb-4">
+                Advanced learning system, analytics, session management, and profile customization now live.
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-white/10 rounded-lg p-4">
+                <div className="font-bold mb-2">✅ Phase 1</div>
+                <div className="text-blue-50">MVP Foundation Complete</div>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <div className="font-bold mb-2">✅ Phase 2</div>
+                <div className="text-blue-50">Learning Enhancement Complete</div>
+              </div>
+              <div className="bg-white/20 rounded-lg p-4 border-2 border-white/40">
+                <div className="font-bold mb-2">🔄 Phase 3</div>
+                <div className="text-blue-50">Testing & Refinement</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Tech Stack */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 text-center">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-4">Built With Modern Tech</h3>
+            <div className="flex flex-wrap justify-center gap-3 text-sm">
+              <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full font-semibold">Next.js 16</span>
+              <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full font-semibold">TypeScript</span>
+              <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-4 py-2 rounded-full font-semibold">OpenAI GPT-4o-mini</span>
+              <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-4 py-2 rounded-full font-semibold">Cloudflare D1</span>
+              <span className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 px-4 py-2 rounded-full font-semibold">Tailwind CSS</span>
+              <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-full font-semibold">Vercel</span>
             </div>
           </div>
         </main>
 
         {/* Footer */}
         <footer className="text-center mt-16 text-slate-500 dark:text-slate-400">
-          <p>Built with Next.js, TypeScript, and Tailwind CSS</p>
+          <p className="mb-2">mytone - Your Personal Writing Assistant</p>
+          <p className="text-sm">January 2026 • Phase 2 Complete</p>
         </footer>
       </div>
     </div>

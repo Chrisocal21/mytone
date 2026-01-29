@@ -1,3 +1,5 @@
+import { getDatabase } from './database';
+
 type Mode = "professional" | "casual";
 type ContentType = "email" | "text" | "note";
 
@@ -7,6 +9,14 @@ interface UserProfile {
   formalityLevel?: string;
   roleContext?: string;
   signatureStyle?: string;
+}
+
+interface LearnedPattern {
+  pattern_category: string;
+  pattern_key: string;
+  pattern_value: string;
+  confidence_score: number;
+  occurrence_count: number;
 }
 
 const BASE_SYSTEM_PROMPT = `You are a digital writing twin that transforms rough notes and thoughts into polished, complete communications that sound EXACTLY like the user wrote them.
@@ -88,12 +98,137 @@ CONTENT TYPE: Note/Memo
 - Make key points stand out clearly`,
 };
 
-export function buildPrompt(
+async function fetchLearnedPatterns(
+  userId: string,
+  mode: Mode,
+  contentType: ContentType
+): Promise<LearnedPattern[]> {
+  try {
+    const db = getDatabase();
+    
+    // Fetch patterns with confidence > 0.3 (observed at least 3-4 times)
+    const result = await db.prepare(`
+      SELECT pattern_category, pattern_key, pattern_value, confidence_score, occurrence_count, last_observed_at
+      FROM learning_patterns
+      WHERE user_id = ?
+        AND confidence_score >= 0.3
+        AND (mode_context = ? OR mode_context = 'all')
+        AND (content_type_context = ? OR content_type_context = 'all')
+      ORDER BY confidence_score DESC, occurrence_count DESC
+      LIMIT 50
+    `).bind(userId, mode, contentType).all();
+    
+    const patterns = result.results as any[];
+    
+    // Apply temporal weighting: recent patterns (last 7 days) get 20% confidence boost
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    return patterns.map(p => {
+      const lastObserved = new Date(p.last_observed_at);
+      const isRecent = lastObserved > sevenDaysAgo;
+      
+      return {
+        pattern_category: p.pattern_category,
+        pattern_key: p.pattern_key,
+        pattern_value: p.pattern_value,
+        confidence_score: isRecent ? Math.min(p.confidence_score * 1.2, 1.0) : p.confidence_score,
+        occurrence_count: p.occurrence_count
+      };
+    }).sort((a, b) => b.confidence_score - a.confidence_score);
+  } catch (error) {
+    console.error('Error fetching learned patterns:', error);
+    return [];
+  }
+}
+
+function buildLearnedPatternsSection(patterns: LearnedPattern[]): string {
+  if (patterns.length === 0) {
+    return `\n\nLEARNED PATTERNS:
+(As you use this tool more, it will learn from your edits to better match your style. Keep using it to build your personal writing profile!)`;
+  }
+
+  let section = `\n\nLEARNED PATTERNS FROM YOUR PREVIOUS EDITS:
+The system has learned these preferences from observing your writing patterns. Apply them consistently:`;
+
+  // Group patterns by category
+  const vocabulary = patterns.filter(p => p.pattern_category === 'vocabulary');
+  const tone = patterns.filter(p => p.pattern_category === 'tone');
+  const length = patterns.filter(p => p.pattern_category === 'length');
+  const structure = patterns.filter(p => p.pattern_category === 'structure');
+
+  // Add vocabulary preferences
+  if (vocabulary.length > 0) {
+    section += `\n\nVOCABULARY PREFERENCES (Confidence-Weighted):`;
+    const addPhrases = vocabulary.filter(p => p.pattern_key === 'adds_phrase').slice(0, 8);
+    const removePhrases = vocabulary.filter(p => p.pattern_key === 'removes_phrase').slice(0, 8);
+    
+    if (addPhrases.length > 0) {
+      section += `\n- PREFER using these phrases (user tends to add them): `;
+      section += addPhrases.map(p => `"${p.pattern_value}" (${Math.round(p.confidence_score * 100)}% confidence)`).join(', ');
+    }
+    
+    if (removePhrases.length > 0) {
+      section += `\n- AVOID these phrases (user tends to remove them): `;
+      section += removePhrases.map(p => `"${p.pattern_value}"`).join(', ');
+    }
+  }
+
+  // Add tone preferences
+  if (tone.length > 0) {
+    section += `\n\nTONE PREFERENCES:`;
+    const tonePrefs = tone.slice(0, 3);
+    tonePrefs.forEach(p => {
+      if (p.pattern_key === 'more_formal') {
+        section += `\n- User prefers MORE FORMAL language (${Math.round(p.confidence_score * 100)}% confidence, observed ${p.occurrence_count}x)`;
+      } else if (p.pattern_key === 'less_formal') {
+        section += `\n- User prefers MORE CASUAL language (${Math.round(p.confidence_score * 100)}% confidence, observed ${p.occurrence_count}x)`;
+      }
+    });
+  }
+
+  // Add length preferences
+  if (length.length > 0) {
+    section += `\n\nLENGTH PREFERENCES:`;
+    const lengthPrefs = length.slice(0, 3);
+    lengthPrefs.forEach(p => {
+      if (p.pattern_key === 'prefers_shorter') {
+        section += `\n- User prefers CONCISE writing (${Math.round(p.confidence_score * 100)}% confidence) - be brief and direct`;
+      } else if (p.pattern_key === 'prefers_longer') {
+        section += `\n- User prefers DETAILED writing (${Math.round(p.confidence_score * 100)}% confidence) - expand and elaborate`;
+      }
+    });
+  }
+
+  // Add structure preferences
+  if (structure.length > 0) {
+    section += `\n\nSTRUCTURE PREFERENCES:`;
+    const structPrefs = structure.slice(0, 5);
+    structPrefs.forEach(p => {
+      if (p.pattern_key === 'adds_greeting') {
+        section += `\n- Always include a greeting`;
+      } else if (p.pattern_key === 'removes_greeting') {
+        section += `\n- Skip greetings (user prefers to get straight to the point)`;
+      } else if (p.pattern_key === 'adds_paragraphs') {
+        section += `\n- Break content into multiple paragraphs`;
+      } else if (p.pattern_key === 'removes_paragraphs') {
+        section += `\n- Keep content in a single paragraph when possible`;
+      }
+    });
+  }
+
+  section += `\n\n⚡ These patterns are based on ${patterns.length} learned preferences. The more you use and refine, the better this gets!`;
+
+  return section;
+}
+
+export async function buildPrompt(
   input: string,
   mode: Mode,
   contentType: ContentType,
-  userProfile?: UserProfile
-): { system: string; user: string } {
+  userProfile?: UserProfile,
+  userId?: string
+): Promise<{ system: string; user: string }> {
   let systemPrompt = BASE_SYSTEM_PROMPT;
 
   // Add user profile if available
@@ -120,15 +255,20 @@ export function buildPrompt(
   // Add content type context
   systemPrompt += `\n${CONTENT_TYPE_CONTEXTS[contentType]}`;
 
-  // TODO: Add learned patterns from database
-  systemPrompt += `\n\nLEARNED PATTERNS:
-(As you use this tool, it learns from your edits to better match your style. Currently using base profile.)
+  // Fetch and add learned patterns
+  const patterns = await fetchLearnedPatterns(
+    userId || 'user_chris',
+    mode,
+    contentType
+  );
+  systemPrompt += buildLearnedPatternsSection(patterns);
 
-IMPORTANT REMINDERS:
+  systemPrompt += `\n\nIMPORTANT REMINDERS:
 - Write as if YOU are ${userProfile?.name || 'the user'}, not as an AI assistant
 - Match this specific person's vocabulary and expressions
 - Sound natural and authentic, not generic or robotic
-- Make it polished but still recognizably THEIR voice`;
+- Make it polished but still recognizably THEIR voice
+- APPLY THE LEARNED PATTERNS ABOVE - they represent what this user actually wants`;
 
   const userPrompt = `Input to enhance:\n\n${input}`;
 

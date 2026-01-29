@@ -2,10 +2,44 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { buildPrompt } from "@/lib/promptBuilder";
 import { getUserProfile, saveSession } from "@/lib/database";
+import crypto from "crypto";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Simple in-memory cache
+interface CacheEntry {
+  output: string;
+  tokenUsage: {
+    input: number;
+    output: number;
+    total: number;
+  };
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// Generate cache key from request parameters
+function getCacheKey(input: string, mode: string, contentType: string, userId: string): string {
+  const data = `${input}|${mode}|${contentType}|${userId}`;
+  return crypto.createHash('md5').update(data).digest('hex');
+}
+
+// Clean expired cache entries
+function cleanCache() {
+  const now = Date.now();
+  for (const [key, entry] of cache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      cache.delete(key);
+    }
+  }
+}
+
+// Clean cache every 10 minutes
+setInterval(cleanCache, 10 * 60 * 1000);
 
 interface ProfileResult {
   id: string;
@@ -78,8 +112,43 @@ export async function POST(request: Request) {
           signatureStyle: "Cheers,\nChris O'Connell\n(potential job title)",
         };
 
-    // Build the prompt
-    const { system, user } = buildPrompt(input, mode, contentType, userProfile);
+    // Check cache first
+    const cacheKey = getCacheKey(input, mode, contentType, actualUserId);
+    const cachedEntry = cache.get(cacheKey);
+    
+    if (cachedEntry && (Date.now() - cachedEntry.timestamp) < CACHE_TTL) {
+      const processingTime = Date.now() - startTime;
+      
+      // Generate session ID even for cached responses
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Save session to database
+      try {
+        await saveSession({
+          id: sessionId,
+          userId: actualUserId,
+          mode,
+          contentType,
+          originalInput: input,
+          aiOutput: cachedEntry.output,
+          processingTime,
+          tokenUsage: cachedEntry.tokenUsage,
+        });
+      } catch (dbError) {
+        console.error("Failed to save cached session to database:", dbError);
+      }
+      
+      return NextResponse.json({
+        sessionId,
+        output: cachedEntry.output,
+        processingTime,
+        tokenUsage: cachedEntry.tokenUsage,
+        cached: true,
+      });
+    }
+
+    // Build the prompt with learned patterns
+    const { system, user } = await buildPrompt(input, mode, contentType, userProfile, actualUserId);
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
@@ -108,6 +177,17 @@ export async function POST(request: Request) {
     }
 
     const processingTime = Date.now() - startTime;
+
+    // Cache the response
+    cache.set(cacheKey, {
+      output,
+      tokenUsage: {
+        input: completion.usage?.prompt_tokens || 0,
+        output: completion.usage?.completion_tokens || 0,
+        total: completion.usage?.total_tokens || 0,
+      },
+      timestamp: Date.now(),
+    });
 
     // Generate session ID
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
