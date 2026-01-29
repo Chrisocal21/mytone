@@ -21,6 +21,7 @@ class InMemoryDatabase implements Database {
   private sessions: Map<string, any> = new Map();
   private users: Map<string, any> = new Map();
   private profiles: Map<string, any> = new Map();
+  private patterns: Map<string, any> = new Map();
 
   constructor() {
     // Initialize with default user
@@ -70,6 +71,10 @@ class InMemoryDatabase implements Database {
   _getProfiles() {
     return this.profiles;
   }
+
+  _getPatterns() {
+    return this.patterns;
+  }
 }
 
 class InMemoryPreparedStatement implements PreparedStatement {
@@ -96,17 +101,42 @@ class InMemoryPreparedStatement implements PreparedStatement {
 
     if (query.includes("select") && query.includes("user_profiles")) {
       const profiles = Array.from(this.db._getProfiles().values());
+      // Filter by user_id if bound
+      if (this.boundValues.length > 0) {
+        const userId = this.boundValues[0];
+        return { results: profiles.filter((p: any) => p.user_id === userId) as T[] };
+      }
       return { results: profiles as T[] };
     }
 
     if (query.includes("select") && query.includes("users")) {
       const users = Array.from(this.db._getUsers().values());
+      // Filter by id if bound
+      if (this.boundValues.length > 0) {
+        const userId = this.boundValues[0];
+        return { results: users.filter((u: any) => u.id === userId) as T[] };
+      }
       return { results: users as T[] };
     }
 
     if (query.includes("select") && query.includes("writing_sessions")) {
       const sessions = Array.from(this.db._getSessions().values());
+      // Filter by user_id if bound
+      if (this.boundValues.length > 0) {
+        const userId = this.boundValues[0];
+        return { results: sessions.filter((s: any) => s.user_id === userId) as T[] };
+      }
       return { results: sessions as T[] };
+    }
+
+    if (query.includes("select") && query.includes("learning_patterns")) {
+      const patterns = Array.from(this.db._getPatterns().values());
+      // Filter by user_id if bound
+      if (this.boundValues.length > 0) {
+        const userId = this.boundValues[0];
+        return { results: patterns.filter((p: any) => p.user_id === userId) as T[] };
+      }
+      return { results: patterns as T[] };
     }
 
     return { results: [] };
@@ -143,6 +173,36 @@ class InMemoryPreparedStatement implements PreparedStatement {
       if (existing) {
         existing.final_output = this.boundValues[0];
         existing.updated_at = new Date().toISOString();
+      }
+      return { success: true };
+    }
+
+    if (query.includes("insert into learning_patterns")) {
+      const patternId = this.boundValues[0];
+      const pattern = {
+        id: patternId,
+        user_id: this.boundValues[1],
+        pattern_category: this.boundValues[2],
+        pattern_key: this.boundValues[3],
+        pattern_value: this.boundValues[4],
+        confidence_score: this.boundValues[5],
+        occurrence_count: this.boundValues[6],
+        mode_context: this.boundValues[7],
+        content_type_context: this.boundValues[8],
+        created_at: new Date().toISOString(),
+        last_observed_at: new Date().toISOString(),
+      };
+      this.db._getPatterns().set(patternId, pattern);
+      return { success: true };
+    }
+
+    if (query.includes("update learning_patterns")) {
+      const patternId = this.boundValues[2]; // Last parameter is the ID
+      const existing = this.db._getPatterns().get(patternId);
+      if (existing) {
+        existing.confidence_score = this.boundValues[0];
+        existing.occurrence_count = this.boundValues[1];
+        existing.last_observed_at = new Date().toISOString();
       }
       return { success: true };
     }

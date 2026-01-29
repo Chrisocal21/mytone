@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { updateSessionFinalOutput } from "@/lib/database";
+import { updateSessionFinalOutput, getDatabase } from "@/lib/database";
+import { extractLearningPatterns } from "@/lib/learningEngine";
 
 export async function POST(request: Request) {
   try {
@@ -23,12 +24,43 @@ export async function POST(request: Request) {
     // Update session with final output
     await updateSessionFinalOutput(sessionId, finalOutput);
 
-    // TODO: Extract learning patterns from edits
-    // Compare AI output with final output to learn preferences
+    // Get session details for learning
+    const db = getDatabase();
+    const session = await db.prepare(
+      'SELECT * FROM writing_sessions WHERE id = ?'
+    ).bind(sessionId).first<any>();
+
+    if (session) {
+      // Extract learning patterns from the edits
+      try {
+        await extractLearningPatterns(
+          session.user_id,
+          session.original_input,
+          session.ai_output,
+          finalOutput,
+          session.mode,
+          session.content_type
+        );
+        
+        return NextResponse.json({
+          success: true,
+          learningUpdated: true,
+          message: "Session finalized and learning patterns extracted",
+        });
+      } catch (learningError) {
+        console.error("Error extracting learning patterns:", learningError);
+        // Still return success for the finalization, just note learning failed
+        return NextResponse.json({
+          success: true,
+          learningUpdated: false,
+          message: "Session finalized but learning extraction failed",
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      learningUpdated: false, // Will be true once learning is implemented
+      learningUpdated: false,
       message: "Session finalized successfully",
     });
   } catch (error) {
