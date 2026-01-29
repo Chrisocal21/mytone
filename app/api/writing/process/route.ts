@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     const startTime = Date.now();
 
     // Fetch user profile from database
-    const userId = userId || "user_chris"; // Default to Chris for now
-    const dbProfile = await getUserProfile(userId);
+    const actualUserId = userId || "user_chris"; // Default to Chris for now
+    const dbProfile = await getUserProfile(actualUserId);
 
     const userProfile = dbProfile
       ? {
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     try {
       await saveSession({
         id: sessionId,
-        userId: userId || "user_chris",
+        userId: actualUserId,
         mode,
         contentType,
         originalInput: input,
