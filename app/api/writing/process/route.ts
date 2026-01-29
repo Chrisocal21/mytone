@@ -7,6 +7,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+interface ProfileResult {
+  id: string;
+  user_id: string;
+  name?: string;
+  communication_style: string;
+  formality_level: string;
+  explanation_preference: string;
+  role_context: string;
+  signature_style: string;
+  preferred_phrases: string;
+  avoided_phrases: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export async function POST(request: Request) {
   try {
     const { input, mode, contentType, userId } = await request.json();
@@ -45,7 +60,7 @@ export async function POST(request: Request) {
 
     // Fetch user profile from database
     const actualUserId = userId || "user_chris"; // Default to Chris for now
-    const dbProfile = await getUserProfile(actualUserId);
+    const dbProfile = await getUserProfile(actualUserId) as ProfileResult | null;
 
     const userProfile = dbProfile
       ? {
