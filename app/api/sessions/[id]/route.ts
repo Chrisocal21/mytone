@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDatabase } from '@/lib/database';
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const sessionId = params.id;
-    const db = getDb();
+    const db = getDatabase();
 
     // Fetch the session with all details
     const session = await db.prepare(`
