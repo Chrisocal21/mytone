@@ -1,0 +1,15 @@
+name = "mytone"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "mytone-db"
+database_id = "" # Will be filled after creating the database
+
+# For local development
+[env.development]
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "mytone-db-dev"
+database_id = "" # Will be filled after creating the database

@@ -3,23 +3,62 @@
 import { useState } from "react";
 
 type Mode = "professional" | "casual";
+type ContentType = "email" | "text" | "note";
+
+interface ProcessResponse {
+  sessionId: string;
+  output: string;
+  processingTime: number;
+  tokenUsage: {
+    input: number;
+    output: number;
+    total: number;
+  };
+}
 
 export default function WritingInterface() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [mode, setMode] = useState<Mode>("professional");
+  const [contentType, setContentType] = useState<ContentType>("text");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const handleProcess = async () => {
     if (!input.trim()) return;
 
     setIsProcessing(true);
-    // TODO: Implement API call to process writing
-    // For now, simulate processing
-    setTimeout(() => {
-      setOutput(input); // Placeholder - will be replaced with AI output
+    setError(null);
+
+    try {
+      const response = await fetch("/api/writing/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          input: input.trim(),
+          mode,
+          contentType,
+          userId: "temp_user", // TODO: Replace with actual user ID
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to process writing");
+      }
+
+      const data: ProcessResponse = await response.json();
+      setOutput(data.output);
+      setSessionId(data.sessionId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      console.error("Processing error:", err);
+    } finally {
       setIsProcessing(false);
-    }, 1000);
+    }
   };
 
   const handleTryAgain = () => {
@@ -29,38 +68,117 @@ export default function WritingInterface() {
   const handleStartOver = () => {
     setInput("");
     setOutput("");
+    setError(null);
+    setSessionId(null);
   };
 
-  const handleUseThisVersion = () => {
-    // TODO: Implement learning from edits
-    console.log("User confirmed output - trigger learning");
+  const handleUseThisVersion = async () => {
+    if (!sessionId || !output) return;
+
+    try {
+      const response = await fetch("/api/writing/finalize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          finalOutput: output,
+        }),
+      });
+
+      if (response.ok) {
+        // TODO: Show success message
+        console.log("Session finalized - learning will be triggered");
+      }
+    } catch (err) {
+      console.error("Failed to finalize session:", err);
+    }
   };
 
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <span className="text-red-600 dark:text-red-400 text-xl mr-3">⚠️</span>
+            <div>
+              <h3 className="font-semibold text-red-800 dark:text-red-300 mb-1">
+                Processing Error
+              </h3>
+              <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mode Toggle */}
-      <div className="flex justify-center mb-8">
-        <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 p-1 bg-white dark:bg-slate-800">
-          <button
-            onClick={() => setMode("professional")}
-            className={`px-6 py-2 rounded-md font-medium transition-colors ${
-              mode === "professional"
-                ? "bg-blue-500 text-white"
-                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
-            }`}
-          >
-            Professional
-          </button>
-          <button
-            onClick={() => setMode("casual")}
-            className={`px-6 py-2 rounded-md font-medium transition-colors ${
-              mode === "casual"
-                ? "bg-blue-500 text-white"
-                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
-            }`}
-          >
-            Casual
-          </button>
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
+        <div>
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1 block text-center">
+            Tone
+          </label>
+          <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 p-1 bg-white dark:bg-slate-800">
+            <button
+              onClick={() => setMode("professional")}
+              className={`px-6 py-2 rounded-md font-medium transition-colors ${
+                mode === "professional"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
+              }`}
+            >
+              Professional
+            </button>
+            <button
+              onClick={() => setMode("casual")}
+              className={`px-6 py-2 rounded-md font-medium transition-colors ${
+                mode === "casual"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
+              }`}
+            >
+              Casual
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1 block text-center">
+            Content Type
+          </label>
+          <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 p-1 bg-white dark:bg-slate-800">
+            <button
+              onClick={() => setContentType("email")}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                contentType === "email"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
+              }`}
+            >
+              Email
+            </button>
+            <button
+              onClick={() => setContentType("text")}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                contentType === "text"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
+              }`}
+            >
+              Text
+            </button>
+            <button
+              onClick={() => setContentType("note")}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                contentType === "note"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-50"
+              }`}
+            >
+              Note
+            </button>
+          </div>
         </div>
       </div>
 
@@ -130,7 +248,7 @@ export default function WritingInterface() {
       </div>
 
       {/* Info Banner */}
-      {!output && input && (
+      {!output && input && !error && (
         <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
           <p className="text-blue-800 dark:text-blue-200">
             Click <strong>Process Writing</strong> to enhance your text while preserving your authentic voice

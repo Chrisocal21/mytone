@@ -30,9 +30,20 @@ See the [Implementation Roadmap](./doc/implementation-roadmap.md) for detailed d
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 18+ installed
+- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+
+### Setup
+
 ```bash
 # Install dependencies
 npm install
+
+# Create .env.local file and add your OpenAI API key
+cp .env.example .env.local
+# Edit .env.local and add: OPENAI_API_KEY=your_actual_api_key
 
 # Run development server
 npm run dev
