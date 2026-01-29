@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/database';
 
+interface SessionResult {
+  session_id: string;
+  user_id: string;
+  mode: string;
+  content_type: string;
+  original_input: string;
+  initial_output: string;
+  final_output: string | null;
+  user_edited: number;
+  feedback_provided: number;
+  created_at: string;
+  user_name?: string;
+  user_email?: string;
+  communication_style?: string;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,7 +35,7 @@ export async function GET(
       FROM writing_sessions ws
       LEFT JOIN user_profiles up ON ws.user_id = up.user_id
       WHERE ws.session_id = ?
-    `).bind(sessionId).first();
+    `).bind(sessionId).first() as SessionResult | null;
 
     if (!session) {
       return NextResponse.json(
